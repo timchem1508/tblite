@@ -16,7 +16,7 @@
 !> @file tblite/post-processing/xtb-ml/xtbml.f90
 !> File to collect all xtbml features
 module tblite_post_processing_xtbml_features
-   use mctc_env, only : wp
+   use mctc_env, only : wp, timer_type, format_time
    use mctc_io, only : structure_type
    use tblite_basis_type, only : basis_type
    use tblite_container, only : container_cache
@@ -26,7 +26,6 @@ module tblite_post_processing_xtbml_features
    use tblite_param_xtbml_features, only : xtbml_features_record
    use tblite_post_processing_type, only : post_processing_type
    use tblite_output_format, only : format_string
-   use tblite_timer, only : timer_type, format_time
    use tblite_wavefunction_type, only : wavefunction_type
    use tblite_xtb_calculator, only : xtb_calculator
    use tblite_xtbml_convolution, only : xtbml_convolution_type

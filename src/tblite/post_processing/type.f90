@@ -17,7 +17,7 @@
 !> @file tblite/post_processing/type.f90
 !> Implements post processing container abstract class, and the collection of computing caches.
 module tblite_post_processing_type
-   use mctc_env, only : wp
+   use mctc_env, only : wp, timer_type, format_time
    use mctc_io, only : structure_type
    use tblite_basis_type, only : basis_type
    use tblite_container_cache, only : container_cache
@@ -25,7 +25,6 @@ module tblite_post_processing_type
    use tblite_double_dictionary, only : double_dictionary_type
    use tblite_integral_type, only : integral_type
    use tblite_results, only : results_type
-   use tblite_timer, only : timer_type, format_time
    use tblite_wavefunction_type, only : wavefunction_type
    use tblite_xtb_calculator, only : xtb_calculator
    implicit none

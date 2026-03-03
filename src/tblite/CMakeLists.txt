@@ -63,7 +63,6 @@ list(
   "${dir}/scf.f90"
   "${dir}/solvation.f90"
   "${dir}/spin.f90"
-  "${dir}/timer.f90"
   "${dir}/toml.f90"
   "${dir}/version.f90"
   "${dir}/wavefunction.f90"

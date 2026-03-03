@@ -20,7 +20,7 @@
 
 !> Implementation of the single point calculation for the CEH model
 module tblite_ceh_singlepoint
-   use mctc_env, only : error_type, wp
+   use mctc_env, only : error_type, wp, timer_type, format_time
    use mctc_io, only: structure_type
    use tblite_adjlist, only : adjacency_list, new_adjacency_list
    use tblite_cutoff, only : get_lattice_points
@@ -42,7 +42,6 @@ module tblite_ceh_singlepoint
    use tblite_ceh_ceh, only : get_effective_qat
    use tblite_xtb_spec, only : tb_h0spec 
    use tblite_xtb_calculator, only : xtb_calculator
-   use tblite_timer, only : timer_type, format_time
    implicit none
    private
 

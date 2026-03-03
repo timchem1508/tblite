@@ -21,7 +21,8 @@
 !> Implementation of the single point calculation for a self-consistent
 !> extended tight-binding Hamiltonian.
 module tblite_xtb_singlepoint
-   use mctc_env, only : wp, error_type, fatal_error, get_variable
+   use mctc_env, only : wp, error_type, fatal_error, get_variable, &
+                  & timer_type, format_time
    use mctc_io, only : structure_type
    use tblite_adjlist, only : adjacency_list, new_adjacency_list
    use tblite_basis_type, only : get_cutoff, basis_type
@@ -36,7 +37,6 @@ module tblite_xtb_singlepoint
    use tblite_scf, only : mixer_type, new_mixer, scf_info, next_scf, &
       & get_mixer_dimension, potential_type, new_potential
    use tblite_scf_solver, only : solver_type
-   use tblite_timer, only : timer_type, format_time
    use tblite_wavefunction, only : wavefunction_type, get_density_matrix, &
       & get_alpha_beta_occupation, &
       & magnet_to_updown, updown_to_magnet

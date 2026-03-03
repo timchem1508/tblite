@@ -17,7 +17,7 @@
 !> @file tblite/post_processing/wbo.f90
 !> Implements the calculation of Wiberg-Mayer bond orders as post processing method.
 module tblite_post_processing_bond_orders
-   use mctc_env, only : wp
+   use mctc_env, only : wp, timer_type, format_time
    use mctc_io, only : structure_type
    use tblite_basis_type, only : basis_type
    use tblite_container, only : container_cache
@@ -27,7 +27,6 @@ module tblite_post_processing_bond_orders
    use tblite_output_format, only : format_string
    use tblite_post_processing_type, only : post_processing_type
    use tblite_results, only : results_type
-   use tblite_timer, only : timer_type, format_time
    use tblite_wavefunction_type, only : wavefunction_type, get_density_matrix
    use tblite_wavefunction_mulliken, only : get_mayer_bond_orders, get_mayer_bond_orders_uhf
    use tblite_xtb_calculator, only : xtb_calculator

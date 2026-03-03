@@ -60,7 +60,6 @@ srcs += files(
   'scf.f90',
   'solvation.f90',
   'spin.f90',
-  'timer.f90',
   'toml.f90',
   'version.f90',
   'wavefunction.f90',
