@@ -23,7 +23,7 @@ module test_ceh
    use mctc_io, only : structure_type, new
    use mctc_ncoord, only : new_ncoord, ncoord_type, cn_count
    use mstore, only : get_structure
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_basis_slater, only : slater_to_gauss
    use tblite_basis_type, only : basis_type, cgto_type, get_cutoff, new_basis
    use tblite_blas, only: gemv
@@ -273,7 +273,7 @@ subroutine test_scaled_selfenergy_mol(error, mol, ref)
    type(tb_hamiltonian) :: h0
    class(ncoord_type), allocatable :: ncoord
    class(ncoord_type), allocatable :: ncoord_en
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    real(wp), parameter :: cn_cutoff = 30.0_wp
    real(wp), allocatable :: lattr(:, :), cn(:), cn_en(:), rcov(:), en(:)
    real(wp), allocatable :: selfenergy(:)
@@ -303,7 +303,8 @@ subroutine test_scaled_selfenergy_mol(error, mol, ref)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(selfenergy(bas%nsh))
    call get_selfenergy(h0, mol%id, bas%ish_at, bas%nsh_id, cn=cn, cn_en=cn_en, &
@@ -333,7 +334,7 @@ subroutine test_hamiltonian_mol(error, mol, ref)
    type(tb_hamiltonian) :: h0
    class(ncoord_type), allocatable :: ncoord
    class(ncoord_type), allocatable :: ncoord_en
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    real(wp), parameter :: cn_cutoff = 30.0_wp
    real(wp), allocatable :: lattr(:, :), cn(:), cn_en(:), rcov(:), en(:)
    real(wp), allocatable :: overlap(:, :), dpint(:, :, :), qpint(:, :, :)
@@ -364,7 +365,8 @@ subroutine test_hamiltonian_mol(error, mol, ref)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(selfenergy(bas%nsh))
    call get_selfenergy(h0, mol%id, bas%ish_at, bas%nsh_id, cn=cn, cn_en=cn_en, &

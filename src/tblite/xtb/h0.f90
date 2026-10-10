@@ -21,7 +21,7 @@
 module tblite_xtb_h0
    use mctc_env, only : wp
    use mctc_io, only : structure_type
-   use tblite_adjlist, only : adjacency_list
+   use mctc_csrlist, only : csr_list
    use tblite_basis_type, only : basis_type
    use tblite_integral_diat_trafo, only : diat_trafo_cache, setup_diat_trafo, &
       & diat_trafo
@@ -224,8 +224,8 @@ subroutine get_hamiltonian(mol, trans, list, bas, h0, selfenergy, overlap, &
    type(structure_type), intent(in) :: mol
    !> Lattice points within a given realspace cutoff
    real(wp), intent(in) :: trans(:, :)
-   !> Neighbour list
-   type(adjacency_list), intent(in) :: list
+   !> Neighbor list
+   type(csr_list), intent(in) :: list
    !> Basis set information
    type(basis_type), intent(in) :: bas
    !> Hamiltonian interaction data
@@ -243,7 +243,7 @@ subroutine get_hamiltonian(mol, trans, list, bas, h0, selfenergy, overlap, &
    !> Share of the neighbour list entries evaluated here, absent selects the complete work
    type(work_partition), intent(in), optional :: partition
 
-   integer :: iat, jat, izp, jzp, itr, img, inl
+   integer :: iat, jat, izp, jzp, itr, img
    integer :: ish, jsh, is, js, nsi, nsj, ii, jj, iao, jao, nao, ij, iaosh, jaosh
    real(wp) :: rr, r2, vec(3), hij, shpolyi, shpoly, dtmpj(3), qtmpj(6)
    real(wp) :: mod_h0_fraction
@@ -268,19 +268,21 @@ subroutine get_hamiltonian(mol, trans, list, bas, h0, selfenergy, overlap, &
    !$omp firstprivate(mod_h0_fraction) &
    !$omp shared(mol, bas, trans, list, overlap, dpint, qpint, hamiltonian, h0, selfenergy) &
    !$omp shared(partition) &
-   !$omp private(iat, jat, izp, jzp, itr, inl, img, is, js, ish, jsh, nsi, nsj, ii, jj) &
+   !$omp private(iat, jat, izp, jzp, itr, img, is, js, ish, jsh, nsi, nsj, ii, jj) &
    !$omp private(iao, jao, iaosh, jaosh, nao, ij, r2, vec, hij, shpolyi, shpoly, rr) &
    !$omp private(stmp, dtmpi, qtmpi, dtmpj, qtmpj, block_overlap, dt_cache)
    do iat = 1, mol%nat
       izp = mol%id(iat)
       is = bas%ish_at(iat)
       nsi = bas%nsh_id(izp)
-      inl = list%inl(iat)
-      do img = 1, list%nnl(iat)
-         jat = list%nlat(img+inl)
+      ! the first entry of each row is the diagonal, handled as onsite block
+      do img = list%inl(iat) + 1, list%inl(iat + 1) - 1
+         jat = list%nlat(img)
          ! the offset into the neighbour list enumerates the diatomic blocks
-         if (.not.owns_index(partition, img+inl)) cycle
-         itr = list%nltr(img+inl)
+         if (.not.owns_index(partition, img)) cycle
+         ! translation indices are only stored for periodic systems
+         itr = 1
+         if (allocated(list%nltr)) itr = list%nltr(img)
          jzp = mol%id(jat)
          js = bas%ish_at(jat)
          nsj = bas%nsh_id(jzp)
@@ -443,7 +445,7 @@ subroutine get_hamiltonian_gradient(mol, trans, list, bas, h0, selfenergy, dsedc
    !> Lattice points within a given realspace cutoff
    real(wp), intent(in) :: trans(:, :)
    !> Neighbour list
-   type(adjacency_list), intent(in) :: list
+   type(csr_list), intent(in) :: list
    !> Basis set information
    type(basis_type), intent(in) :: bas
    !> Hamiltonian interaction data
@@ -469,7 +471,7 @@ subroutine get_hamiltonian_gradient(mol, trans, list, bas, h0, selfenergy, dsedc
    !> Share of the neighbour list entries evaluated here, absent selects the complete work
    type(work_partition), intent(in), optional :: partition
 
-   integer :: iat, jat, izp, jzp, itr, img, inl, spin, nspin
+   integer :: iat, jat, izp, jzp, itr, img, spin, nspin
    integer :: ish, jsh, is, js, nsi, nsj, ii, jj, iao, jao, iaosh, jaosh, nao, ij
    real(wp) :: rr, r2, vec(3), hij, dG(3), hscale, hs
    real(wp) :: shpolyi, shpolyj, shpoly, dshpoly, dsv(3)
@@ -500,7 +502,7 @@ subroutine get_hamiltonian_gradient(mol, trans, list, bas, h0, selfenergy, dsedc
    !$omp shared(partition) &
    !$omp firstprivate(mod_h0_fraction) &
    !$omp private(iat, jat, izp, jzp, itr, is, js, ish, jsh, nsi, nsj, ii, jj) &
-   !$omp private(iaosh, jaosh, iao, jao, nao, ij, inl, img, spin, r2, vec) &
+   !$omp private(iaosh, jaosh, iao, jao, nao, ij, img, spin, r2, vec) &
    !$omp private(stmp, dstmp, dtmp, ddtmpi, ddtmpj, qtmp, dqtmpi, dqtmpj) &
    !$omp private(dG, sval, hscale, hs, hij, hpij, pij, dcni, dcnj, dhdcni, dhdcnj) &
    !$omp private(rr, shpolyi, shpolyj, shpoly, dshpoly, dsv) &
@@ -509,12 +511,14 @@ subroutine get_hamiltonian_gradient(mol, trans, list, bas, h0, selfenergy, dsedc
       izp = mol%id(iat)
       is = bas%ish_at(iat)
       nsi = bas%nsh_id(izp)
-      inl = list%inl(iat)
-      do img = 1, list%nnl(iat)
-         jat = list%nlat(img+inl)
+      ! the first entry of each row is the diagonal, handled as onsite block
+      do img = list%inl(iat) + 1, list%inl(iat + 1) - 1
+         jat = list%nlat(img)
          ! the offset into the neighbour list enumerates the diatomic blocks
-         if (.not.owns_index(partition, img+inl)) cycle
-         itr = list%nltr(img+inl)
+         if (.not.owns_index(partition, img)) cycle
+         ! translation indices are only stored for periodic systems
+         itr = 1
+         if (allocated(list%nltr)) itr = list%nltr(img)
          jzp = mol%id(jat)
          js = bas%ish_at(jat)
          nsj = bas%nsh_id(jzp)

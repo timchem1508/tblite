@@ -19,11 +19,11 @@
 
 !> Surface integrator for solvent accessible surface area
 module tblite_solvation_surface
-   use mctc_env, only : wp
+   use mctc_env, only : wp, error_type
    use mctc_io, only : structure_type
    use mctc_io_constants, only : pi
    use mctc_io_convert, only : aatoau
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_mesh_lebedev, only : get_angular_grid, grid_size, list_bisection
    use tblite_partition, only : work_partition, owns_index
    implicit none
@@ -132,10 +132,12 @@ subroutine get_surface(self, mol, surface, dsdr, partition)
    !> Share of the atoms evaluated here, absent selects the complete work
    type(work_partition), intent(in), optional :: partition
 
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    real(wp), parameter :: trans(3, 1) = 0.0_wp
+   type(error_type), allocatable :: error
 
-   call new_adjacency_list(list, mol, trans, self%srcut, .true.)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=trans, cutoff=self%srcut, complete=.true.)
 
    ! compute solvent accessible surface and its derivatives
    if (present(dsdr)) then
@@ -157,7 +159,7 @@ subroutine compute_surface(nat, xyz, list, vdwsa, &
    !> Cartesian coordinates
    real(wp), intent(in) :: xyz(:, :)
    !> Neighbourlist
-   type(adjacency_list), intent(in) :: list
+   type(csr_list), intent(in) :: list
    !> Van-der-Waals radii including probe radius of solvent
    real(wp), intent(in) :: vdwsa(:)
    !> Radial weights for the numerical integration
@@ -187,7 +189,7 @@ subroutine compute_surface(nat, xyz, list, vdwsa, &
 
       rsas = vdwsa(iat)
       ino = list%inl(iat)
-      nno = list%nnl(iat)
+      nno = list%inl(iat + 1) - ino - 1
 
       ! initialize storage
       sasai = 0.0_wp
@@ -225,7 +227,7 @@ subroutine compute_numsa(nat, xyz, list, vdwsa, &
    !> Cartesian coordinates
    real(wp), intent(in) :: xyz(:, :)
    !> Neighbourlist
-   type(adjacency_list), intent(in) :: list
+   type(csr_list), intent(in) :: list
    !> Van-der-Waals radii including probe radius of solvent
    real(wp), intent(in) :: vdwsa(:)
    !> Radial weights for the numerical integration
@@ -247,18 +249,23 @@ subroutine compute_numsa(nat, xyz, list, vdwsa, &
    integer :: iat, jat, ip, jj, nni, nno, ino
    real(wp) :: rsas, sasai, xyza(3), xyzp(3), sasap, wr, wsa, drjj(3)
    real(wp), allocatable :: grds(:, :), grads(:, :)
-   integer, allocatable :: grdi(:)
+   integer, allocatable :: grdi(:), nnl(:)
 
    surface(:) = 0.0_wp
    dsdrt(:, :, :) = 0.0_wp
 
    ! allocate space for the gradient storage
+   allocate (nnl(nat))
+   do iat = 1, nat
+      nnl(iat) = list%inl(iat + 1) - list%inl(iat) - 1
+   end do
    allocate (grads(3, nat), source=0.0_wp)
-   allocate (grds(3, maxval(list%nnl)))
-   allocate (grdi(maxval(list%nnl)))
+   allocate (grds(3, maxval(nnl)))
+   allocate (grdi(maxval(nnl)))
+
 
    !$omp parallel do default(none) shared(surface, dsdrt, ah0, ah1, ah3) &
-   !$omp shared(nat, vdwsa, list, xyz, wrp, ang_grid, ang_weight, trj2, partition) &
+   !$omp shared(nat, vdwsa, list, nnl, xyz, wrp, ang_grid, ang_weight, trj2, partition) &
    !$omp private(iat, jat, rsas, nno, grads, sasai, xyza, wr, ip, xyzp, wsa, &
    !$omp& sasap, jj, nni, grdi, grds, drjj, ino)
    do iat = 1, nat
@@ -266,7 +273,7 @@ subroutine compute_numsa(nat, xyz, list, vdwsa, &
 
       rsas = vdwsa(iat)
       ino = list%inl(iat)
-      nno = list%nnl(iat)
+      nno = nnl(iat)
 
       ! initialize storage
       grads = 0.0_wp

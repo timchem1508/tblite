@@ -22,7 +22,7 @@ module test_hamiltonian
    use mctc_io, only : structure_type
    use mctc_ncoord, only : new_ncoord, ncoord_type, cn_count
    use mstore, only : get_structure
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_basis_slater, only : slater_to_gauss
    use tblite_basis_type, only : basis_type, cgto_type, get_cutoff, new_basis
    use tblite_cutoff, only : get_lattice_points
@@ -119,7 +119,7 @@ subroutine test_hamiltonian_mol(error, mol, ref)
    type(basis_type) :: bas
    type(tb_hamiltonian) :: h0
    class(ncoord_type), allocatable :: ncoord
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    real(wp), parameter :: cn_cutoff = 30.0_wp
    real(wp), allocatable :: lattr(:, :), cn(:), rcov(:)
    real(wp), allocatable :: overlap(:, :), hamiltonian(:, :), selfenergy(:)
@@ -143,7 +143,8 @@ subroutine test_hamiltonian_mol(error, mol, ref)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(selfenergy(bas%nsh))
    call get_selfenergy(h0, mol%id, bas%ish_at, bas%nsh_id, cn=cn, selfenergy=selfenergy)
@@ -184,7 +185,7 @@ subroutine test_hamiltonian_periodic_self(error)
    type(structure_type) :: mol
    type(basis_type) :: bas
    type(tb_hamiltonian) :: h0
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    type(potential_type) :: pot
    real(wp), allocatable :: lattr(:, :), cn(:), selfenergy(:), dsedcn(:), dEdcn(:)
    real(wp), allocatable :: pmat(:, :, :), xmat(:, :, :), gradient(:, :), sigma(:, :)
@@ -201,7 +202,9 @@ subroutine test_hamiltonian_periodic_self(error)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
+   if (allocated(error)) return
 
    allocate(cn(mol%nat), selfenergy(bas%nsh), dsedcn(bas%nsh))
    cn(:) = 0.0_wp
@@ -269,7 +272,8 @@ function get_hamiltonian_energy(mol, cn) result(energy)
 
    type(basis_type) :: bas
    type(tb_hamiltonian) :: h0
-   type(adjacency_list) :: list
+   type(error_type), allocatable :: error
+   type(csr_list), allocatable :: list
    real(wp), allocatable :: lattr(:, :), selfenergy(:)
    real(wp), allocatable :: overlap(:, :), dpint(:, :, :), qpint(:, :, :)
    real(wp), allocatable :: hamiltonian(:, :)
@@ -281,7 +285,8 @@ function get_hamiltonian_energy(mol, cn) result(energy)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(selfenergy(bas%nsh))
    call get_selfenergy(h0, mol%id, bas%ish_at, bas%nsh_id, cn=cn, &
@@ -306,7 +311,8 @@ function get_hamiltonian_image_energy(mol, cn) result(energy)
 
    type(basis_type) :: bas
    type(tb_hamiltonian) :: h0
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
+   type(error_type), allocatable :: error
    real(wp), allocatable :: lattr(:, :), selfenergy(:)
    real(wp), allocatable :: overlap(:, :), dpint(:, :, :), qpint(:, :, :)
    real(wp), allocatable :: hamiltonian(:, :)
@@ -318,7 +324,8 @@ function get_hamiltonian_image_energy(mol, cn) result(energy)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(selfenergy(bas%nsh))
    call get_selfenergy(h0, mol%id, bas%ish_at, bas%nsh_id, cn=cn, &
@@ -353,7 +360,8 @@ function get_hamiltonian_energy_with_selfenergy(mol, selfenergy) result(energy)
 
    type(basis_type) :: bas
    type(tb_hamiltonian) :: h0
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
+   type(error_type), allocatable :: error
    real(wp), allocatable :: lattr(:, :)
    real(wp), allocatable :: overlap(:, :), dpint(:, :, :), qpint(:, :, :)
    real(wp), allocatable :: hamiltonian(:, :)
@@ -365,7 +373,8 @@ function get_hamiltonian_energy_with_selfenergy(mol, selfenergy) result(energy)
 
    cutoff = get_cutoff(bas)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
 
    allocate(overlap(bas%nao, bas%nao), dpint(3, bas%nao, bas%nao), &
       & qpint(6, bas%nao, bas%nao), hamiltonian(bas%nao, bas%nao))

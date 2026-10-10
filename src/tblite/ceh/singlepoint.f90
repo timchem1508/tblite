@@ -22,7 +22,7 @@
 module tblite_ceh_singlepoint
    use mctc_env, only : error_type, wp
    use mctc_io, only: structure_type
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_basis_type, only : get_cutoff
    use tblite_blas, only : gemv
    use tblite_ceh_ceh, only : get_effective_qat
@@ -81,8 +81,8 @@ contains
       type(integral_type) :: ints
       ! Electronic solver
       class(solver_type), allocatable :: solver
-      ! Adjacency list
-      type(adjacency_list) :: list
+      ! CSR list
+      type(csr_list), allocatable :: list
       ! Potential type
       type(potential_type) :: pot
       ! Restart data for interaction containers and coulomb
@@ -162,7 +162,12 @@ contains
 
       cutoff = get_cutoff(calc%bas, accuracy)
       call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-      call new_adjacency_list(list, mol, lattr, cutoff)
+      allocate(list)
+      call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
+      if (allocated(error)) then
+         call ctx%set_error(error)
+         return
+      end if
 
       if (prlevel > 1) then
          call ctx%message(label_cutoff // format_string(cutoff, real_format) // " bohr")

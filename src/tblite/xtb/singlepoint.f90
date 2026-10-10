@@ -23,7 +23,7 @@
 module tblite_xtb_singlepoint
    use mctc_env, only : wp, error_type, fatal_error, get_variable
    use mctc_io, only : structure_type
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_basis_type, only : get_cutoff, basis_type
    use tblite_blas, only : gemv
    use tblite_container, only : container_cache
@@ -113,7 +113,7 @@ subroutine xtb_singlepoint(ctx, mol, calc, wfn, accuracy, energy, gradient, sigm
    type(error_type), allocatable :: error
    type(scf_info) :: info
    class(solver_type), allocatable :: solver
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    type(cache_list), allocatable :: caches
 
    integer :: iscf, spin
@@ -245,7 +245,12 @@ subroutine xtb_singlepoint(ctx, mol, calc, wfn, accuracy, energy, gradient, sigm
 
    cutoff = get_cutoff(calc%bas, accuracy)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
+   if (allocated(error)) then
+      call ctx%set_error(error)
+      return
+   end if
 
    if (prlevel > 1) then
       call ctx%message(label_cutoff // format_string(cutoff, real_format) // " bohr")

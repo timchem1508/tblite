@@ -22,7 +22,7 @@ module test_partition
       & test_failed
    use mctc_io, only : structure_type
    use mstore, only : get_structure
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
+   use mctc_csrlist, only : csr_list, new_csr_list
    use tblite_basis_type, only : get_cutoff
    use tblite_container, only : container_cache, container_type
    use tblite_container_list, only : cache_list
@@ -340,7 +340,7 @@ subroutine test_hamiltonian(error)
    type(structure_type) :: mol
    type(xtb_calculator) :: calc
    type(work_partition) :: partition
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
    type(integral_type) :: full, part_ints, summed
    real(wp) :: cutoff
    real(wp), allocatable :: cn(:), selfenergy(:), lattr(:, :)
@@ -357,7 +357,9 @@ subroutine test_hamiltonian(error)
 
    cutoff = get_cutoff(calc%bas, 1.0_wp)
    call get_lattice_points(mol%periodic, mol%lattice, cutoff, lattr)
-   call new_adjacency_list(list, mol, lattr, cutoff)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=lattr, cutoff=cutoff)
+   if (allocated(error)) return
 
    call new_integral(full, calc%bas%nao)
    call get_hamiltonian(mol, lattr, list, calc%bas, calc%h0, selfenergy, &

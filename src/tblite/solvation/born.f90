@@ -19,11 +19,11 @@
 
 !> Integrator for Born radii based on the Onufriev-Bashford-Case model
 module tblite_solvation_born
-   use mctc_env, only : wp
+   use mctc_csrlist, only : csr_list, new_csr_list
+   use mctc_env, only : wp, error_type
    use mctc_io, only : structure_type
    use mctc_io_constants, only : pi
    use mctc_io_convert, only : aatoau
-   use tblite_adjlist, only : adjacency_list, new_adjacency_list
    implicit none
    private
 
@@ -117,11 +117,13 @@ subroutine get_rad(self, mol, rad, draddr)
    !> Derivative of Born radii w.r.t. cartesian displacements
    real(wp), intent(out), optional :: draddr(:, :, :)
 
-   type(adjacency_list) :: list
+   type(csr_list), allocatable :: list
+   type(error_type), allocatable :: error
    real(wp), parameter :: trans(3, 1) = 0.0_wp
    real(wp), allocatable :: brdr(:, :, :)
 
-   call new_adjacency_list(list, mol, trans, self%lrcut)
+   allocate(list)
+   call new_csr_list(list, mol, error, trans=trans, cutoff=self%lrcut)
    allocate(brdr(3, mol%nat, mol%nat))
 
    call compute_bornr(mol%nat, mol%xyz, list, &
@@ -139,7 +141,7 @@ subroutine compute_bornr(nat, xyz, list, vdwr, rho, svdw, c1, obc, &
    !> Cartesian coordinates
    real(wp), intent(in) :: xyz(:, :)
    !> Neighbourlist
-   type(adjacency_list), intent(in) :: list
+   type(csr_list), intent(in) :: list
    !> Van-der-Waals radii
    real(wp), intent(in) :: vdwr(:)
    !> Descreened van-der-Waals radii
@@ -203,7 +205,7 @@ pure subroutine compute_psi(nat, xyz, list, vdwr, rho, psi, dpsidr)
    !> Cartesian coordinates
    real(wp), intent(in) :: xyz(:, :)
    !> Neighbourlist
-   type(adjacency_list), intent(in) :: list
+   type(csr_list), intent(in) :: list
    !> Van-der-Waals radii
    real(wp), intent(in) :: vdwr(:)
    !> Descreened van-der-Waals radii
@@ -214,7 +216,7 @@ pure subroutine compute_psi(nat, xyz, list, vdwr, rho, psi, dpsidr)
    real(wp), intent(out) :: dpsidr(:, :, :)
    real(wp), allocatable :: dpsitr(:, :)
 
-   integer  :: iat, jat, img, inl
+   integer  :: iat, jat, img
    real(wp) :: vec(3), r, rhoi, rhoj
    real(wp) :: gi, gj, ap, am, lnab, rhab, ab, dgi, dgj
    real(wp) :: drjj(3)
@@ -228,9 +230,9 @@ pure subroutine compute_psi(nat, xyz, list, vdwr, rho, psi, dpsidr)
    dpsitr(:, :) = 0.0_wp
 
    do iat = 1, nat
-      inl = list%inl(iat)
-      do img = 1, list%nnl(iat)
-         jat = list%nlat(inl+img)
+      ! skip the diagonal entry at the start of each row
+      do img = list%inl(iat) + 1, list%inl(iat + 1) - 1
+         jat = list%nlat(img)
 
          vec(:) = xyz(:, iat) - xyz(:, jat)
          r = norm2(vec)
